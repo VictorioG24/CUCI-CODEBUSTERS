@@ -320,12 +320,8 @@ app.post("/login", async (req, res) => {
 
 // SERVER
 
-app.listen(
-  process.env.PORT,
-  () => {
-    console.log(
-      "Servidor en puerto " +
-      process.env.PORT
-    );
-  }
-);
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log("Servidor en puerto " + PORT);
+});
