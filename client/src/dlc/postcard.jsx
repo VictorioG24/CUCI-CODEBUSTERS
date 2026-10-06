@@ -102,7 +102,7 @@ export default function PostCard({ post }) {
                 )
               }
             >
-              📋 Copiar
+              Copiar
             </button>
 
           </div>
@@ -123,12 +123,8 @@ export default function PostCard({ post }) {
             setShowComments(!showComments)
           }
         >
-          💬 {comments.length} respuestas
+          {comments.length} respuestas
         </button>
-
-        <span>
-          ❤️ {post.likes || 0}
-        </span>
 
       </div>
 
@@ -175,7 +171,7 @@ export default function PostCard({ post }) {
                         )
                       }
                     >
-                      📋 Copiar
+                      Copiar
                     </button>
 
                   </div>
@@ -255,7 +251,7 @@ export default function PostCard({ post }) {
               className="btn"
               onClick={sendComment}
             >
-              Responder 💬
+              Responder
             </button>
 
           </div>

@@ -74,7 +74,7 @@ export default function CreatePost({ setPage, user }) {
 
     <div className="container">
 
-      <h2>Subir código 🚀</h2>
+      <h2>Subir código</h2>
 
       <input
         type="text"
@@ -152,7 +152,7 @@ export default function CreatePost({ setPage, user }) {
 
         {loading
           ? "Publicando..."
-          : "Publicar código 🚀"}
+          : "Publicar código"}
 
       </button>
 

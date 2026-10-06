@@ -31,7 +31,7 @@ export default function Foro() {
 
     <div className="container">
 
-      <h2>Foro 👻</h2>
+      <h2>Foro</h2>
 
       {loading && (
         <p>Cargando publicaciones...</p>
