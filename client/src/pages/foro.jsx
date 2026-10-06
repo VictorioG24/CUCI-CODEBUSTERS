@@ -11,7 +11,7 @@ export default function Foro() {
 
   useEffect(() => {
 
-    fetch("http://localhost:5000/posts")
+    fetch("https://codebusters-api.onrender.com/posts")
 
       .then(res => res.json())
 

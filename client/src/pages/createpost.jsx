@@ -26,7 +26,7 @@ export default function CreatePost({ setPage, user }) {
       setLoading(true);
 
       const res = await fetch(
-        "http://localhost:5000/posts",
+        "https://codebusters-api.onrender.com/posts",
         {
           method: "POST",
 

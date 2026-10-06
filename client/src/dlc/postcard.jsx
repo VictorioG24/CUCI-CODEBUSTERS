@@ -27,7 +27,7 @@ export default function PostCard({ post }) {
     try {
 
       const res = await fetch(
-        `http://localhost:5000/posts/${post._id}/comments`,
+        `https://codebusters-api.onrender.com/posts/${post._id}/comments`,
         {
           method: "POST",
 
