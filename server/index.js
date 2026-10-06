@@ -92,7 +92,6 @@ const postSchema = new mongoose.Schema({
 const Post = mongoose.model("Post", postSchema);
 
 // MODELO USUARIO
-
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -103,14 +102,54 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true
+  },
+
+  role: {
+    type: String,
+    enum: ["usuario", "tester", "moderador", "admin"],
+    default: "usuario"
   }
 });
 
 const User = mongoose.model("User", userSchema);
 
+// VERIFICAR LOGIN
+
+function verificarToken(req, res, next) {
+
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({
+      error: "Debes iniciar sesión"
+    });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+
+    const decoded = jwt.verify(
+      token,
+      "secreto123"
+    );
+
+    req.user = decoded;
+
+    next();
+
+  } catch (error) {
+
+    return res.status(401).json({
+      error: "Token inválido o expirado"
+    });
+
+  }
+}
+
 // OBTENER POSTS
 
-app.get("/posts", async (req, res) => {
+app.post("/posts", verificarToken, async (req, res) => {
   try {
     const posts = await Post.find().sort({ createdAt: -1 });
 
@@ -127,16 +166,14 @@ app.get("/posts", async (req, res) => {
 
 // CREAR POST
 
-app.post("/posts", async (req, res) => {
-  try {
+app.post("/posts", verificarToken, async (req, res) => {  try {
 
     const {
-      title,
-      description,
-      code,
-      language,
-      user
-    } = req.body;
+  title,
+  description,
+  code,
+  language
+} = req.body;
 
     if (!title) {
       return res.status(400).json({
@@ -145,13 +182,12 @@ app.post("/posts", async (req, res) => {
     }
 
     const newPost = new Post({
-      title,
-      description,
-      code,
-      language,
-      user: user || "Anónimo"
-    });
-
+  title,
+  description,
+  code,
+  language,
+  user: req.user.username
+});
     await newPost.save();
 
     res.status(201).json(newPost);
@@ -168,16 +204,13 @@ app.post("/posts", async (req, res) => {
 
 // AGREGAR COMENTARIO
 
-app.post("/posts/:id/comments", async (req, res) => {
+app.post("/posts/:id/comments", verificarToken, async (req, res) => {  try {
 
-  try {
-
-    const {
-      content,
-      code,
-      language,
-      user
-    } = req.body;
+   const {
+  content,
+  code,
+  language
+} = req.body;
 
     const post = await Post.findById(req.params.id);
 
@@ -187,12 +220,12 @@ app.post("/posts/:id/comments", async (req, res) => {
       });
     }
 
-    post.comments.push({
-      content: content || "",
-      code: code || "",
-      language: language || "javascript",
-      user: user || "Anónimo"
-    });
+   post.comments.push({
+  content: content || "",
+  code: code || "",
+  language: language || "javascript",
+  user: req.user.username
+});
 
     await post.save();
 
@@ -293,21 +326,22 @@ app.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      {
-        id: user._id,
-        username: user.username
-      },
-      "secreto123",
-      {
-        expiresIn: "1d"
-      }
-    );
+  {
+    id: user._id,
+    username: user.username,
+    role: user.role
+  },
+  "secreto123",
+  {
+    expiresIn: "1d"
+  }
+);
 
-    res.json({
-      token,
-      username: user.username
-    });
-
+res.json({
+  token,
+  username: user.username,
+  role: user.role
+});
   } catch (error) {
 
     console.log(error);

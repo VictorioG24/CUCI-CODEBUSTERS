@@ -51,7 +51,7 @@ export default function CreatePost({ setPage, user }) {
         return;
       }
 
-      alert("¡Publicación creada! 🚀");
+      alert("¡Publicación creada!");
 
       setPage("foro");
 
