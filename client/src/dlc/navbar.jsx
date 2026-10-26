@@ -31,6 +31,13 @@ export default function Navbar({ setPage, user, setUser }) {
           <span>
             Hola, {user.username}
           </span>
+	{(user?.role === "admin" ||
+  localStorage.getItem("role") === "admin") && (
+  <button onClick={() => setPage("admin")}>
+    Administrar usuarios
+  </button>
+		)
+	}
 
           <button onClick={() => setPage("create")}>
             Crear publicación
@@ -49,6 +56,7 @@ export default function Navbar({ setPage, user, setUser }) {
           <button onClick={() => setPage("login")}>
             Iniciar sesión
           </button>
+          
         </>
       )}
     </nav>
