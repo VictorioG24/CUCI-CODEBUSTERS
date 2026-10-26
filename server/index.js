@@ -111,12 +111,18 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
+const JWT_SECRET = process.env.JWT_SECRET;
 
-function verificarToken(req, res, next) {
+if (!JWT_SECRET) {
+  throw new Error("Falta configurar JWT_SECRET en las variables de entorno");
+}
 
+
+
+async function verificarToken(req, res, next) {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({
       error: "Debes iniciar sesión"
     });
@@ -125,27 +131,63 @@ function verificarToken(req, res, next) {
   const token = authHeader.split(" ")[1];
 
   try {
+    const decoded = jwt.verify(token, JWT_SECRET);
 
-    const decoded = jwt.verify(
-      token,
-      "secreto123"
+    const user = await User.findById(decoded.id).select(
+      "_id username role"
     );
 
-    req.user = decoded;
+    if (!user) {
+      return res.status(401).json({
+        error: "El usuario ya no existe"
+      });
+    }
+
+    req.user = {
+      id: user._id.toString(),
+      username: user.username,
+      role: user.role
+    };
 
     next();
-
   } catch (error) {
+    if (error.name === "JsonWebTokenError" ||
+        error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        error: "Token inválido o expirado"
+      });
+    }
 
-    return res.status(401).json({
-      error: "Token inválido o expirado"
+    console.error("Error al verificar usuario:", error);
+
+    return res.status(500).json({
+      error: "Error al verificar la sesión"
     });
-
   }
 }
 
 
- // OBTENER POSTS (PÚBLICO)
+function requireRole(...rolesPermitidos) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        error: "Debes iniciar sesión"
+      });
+    }
+
+    if (!rolesPermitidos.includes(req.user.role)) {
+      return res.status(403).json({
+        error: "No tienes permisos para realizar esta acción"
+      });
+    }
+
+    next();
+  };
+}
+
+
+
+ // OBTENER POSTS
 
 app.get("/posts", async (req, res) => {
   try {
@@ -159,7 +201,7 @@ app.get("/posts", async (req, res) => {
   }
 });
 
-// CREAR POST (REQUIERE SESIÓN)
+// CREAR POST
 
 app.post("/posts", verificarToken, async (req, res) => {
   try {
@@ -191,7 +233,7 @@ app.post("/posts", verificarToken, async (req, res) => {
 });
 
 
- // AGREGAR COMENTARIO (REQUIERE SESIÓN)
+ // AGREGAR COMENT
 
 app.post("/posts/:id/comments", verificarToken, async (req, res) => {
   try {
@@ -236,6 +278,105 @@ app.post("/posts/:id/comments", verificarToken, async (req, res) => {
     });
   }
 });
+
+
+/* EDITAR PUBLICACIÓN prop*/
+app.patch("/posts/:id", verificarToken, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({
+        error: "Publicación no encontrada"
+      });
+    }
+
+    // No permitir reclamar publicaciones
+    if (!post.user || post.user === "Anónimo" ||
+        post.user !== req.user.username) {
+      return res.status(403).json({
+        error: "Solo puedes editar tus propias publicaciones"
+      });
+    }
+
+    const { title, description, code, language } = req.body;
+
+    if (title !== undefined) {
+      if (typeof title !== "string" || !title.trim()) {
+        return res.status(400).json({
+          error: "El título es obligatorio"
+        });
+      }
+      post.title = title.trim();
+    }
+
+    if (description !== undefined) post.description = description;
+    if (code !== undefined) post.code = code;
+    if (language !== undefined) post.language = language;
+
+    await post.save();
+    return res.json(post);
+  } catch (error) {
+    console.error("Error al editar publicación:", error);
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        error: "El ID de la publicación no es válido"
+      });
+    }
+
+    return res.status(500).json({
+      error: "Error al editar publicación"
+    });
+  }
+});
+
+
+/* ELIMINAR PUBLICACIÓN*/
+app.delete("/posts/:id", verificarToken, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({
+        error: "Publicación no encontrada"
+      });
+    }
+
+    const esPropietario =
+      post.user &&
+      post.user !== "Anónimo" &&
+      post.user === req.user.username;
+
+    const esModerador =
+      ["moderador", "admin"].includes(req.user.role);
+
+    if (!esPropietario && !esModerador) {
+      return res.status(403).json({
+        error: "No tienes permiso para eliminar esta publicación"
+      });
+    }
+
+    await post.deleteOne();
+
+    return res.json({
+      message: "Publicación eliminada correctamente"
+    });
+  } catch (error) {
+    console.error("Error al eliminar publicación:", error);
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        error: "El ID de la publicación no es válido"
+      });
+    }
+
+    return res.status(500).json({
+      error: "Error al eliminar publicación"
+    });
+  }
+});
+
 
 
 // REGISTER
@@ -289,6 +430,76 @@ app.post("/register", async (req, res) => {
   }
 });
 
+/* CONSULTAR USUARIOS: solo administradores */
+app.get("/users", verificarToken, requireRole("admin"), async (req, res) => {
+  try {
+    const users = await User.find()
+      .select("_id username role")
+      .sort({ username: 1 });
+
+    return res.json(users);
+  } catch (error) {
+    console.error("Error al consultar usuarios:", error);
+    return res.status(500).json({
+      error: "Error al consultar usuarios"
+    });
+  }
+});
+
+
+/* CAMBIAR ROL: solo administradores */
+app.patch("/users/:id/role", verificarToken, requireRole("admin"), async (req, res) => {
+  try {
+    const { role } = req.body;
+    const rolesPermitidos = ["usuario", "tester", "moderador", "admin"];
+
+    if (!rolesPermitidos.includes(role)) {
+      return res.status(400).json({
+        error: "El rol seleccionado no es válido"
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        error: "Usuario no encontrado"
+      });
+    }
+
+    // Evitar que el administrador se quite su propio rol.
+    if (user._id.toString() === req.user.id && role !== "admin") {
+      return res.status(400).json({
+        error: "No puedes quitarte tu propio rol de administrador"
+      });
+    }
+
+    user.role = role;
+    await user.save();
+
+    return res.json({
+      message: "Rol actualizado correctamente",
+      user: {
+        _id: user._id,
+        username: user.username,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error("Error al cambiar rol:", error);
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        error: "El ID del usuario no es válido"
+      });
+    }
+
+    return res.status(500).json({
+      error: "Error al cambiar el rol"
+    });
+  }
+});
+
 // LOGIN
 
 app.post("/login", async (req, res) => {
@@ -328,7 +539,7 @@ app.post("/login", async (req, res) => {
     username: user.username,
     role: user.role
   },
-  "secreto123",
+  JWT_SECRET,
   {
     expiresIn: "1d"
   }

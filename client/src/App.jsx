@@ -7,6 +7,7 @@ import Login from "./pages/login";
 import Register from "./pages/register";
 import Foro from "./pages/foro";
 import CreatePost from "./pages/createpost";
+import Admin from "./pages/admin";
 
 export default function App() {
   const [page, setPage] = useState("home");
@@ -52,6 +53,10 @@ export default function App() {
 
       {page === "create" && (
         <CreatePost setPage={setPage} />
+      )}
+
+      {page === "admin" && user?.role === "admin" && (
+        <Admin />
       )}
     </div>
   );
