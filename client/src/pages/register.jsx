@@ -1,31 +1,55 @@
+
 import React, { useState } from "react";
 
-export default function Register() {
+export default function Register({ setPage }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const register = async () => {
+    const nombre = username.trim();
+
+    if (!nombre || !password.trim()) {
+      alert("Completa el usuario y la contraseña.");
+      return;
+    }
+
+    if (password.length < 6) {
+      alert("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
     try {
-      const res = await fetch("https://codebusters-api.onrender.com/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ username, password })
-      });
+      setLoading(true);
+
+      const res = await fetch(
+        "https://codebusters-api.onrender.com/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            username: nombre,
+            password
+          })
+        }
+      );
 
       const data = await res.json();
-      console.log(data);
 
-      if (res.ok) {
-        alert("Usuario creado exitosamente");
-      } else {
-        alert(data.error);
+      if (!res.ok) {
+        alert(data.error || "No se pudo crear la cuenta.");
+        return;
       }
 
+      alert("¡Cuenta creada! Ahora inicia sesión.");
+      setPage("login");
     } catch (error) {
-      console.log(error);
-      alert("Error de conexión");
+      console.error("Error al registrarse:", error);
+      alert("No se pudo conectar con el servidor.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -34,17 +58,29 @@ export default function Register() {
       <h2>Registro</h2>
 
       <input
-        placeholder="Username"
-        onChange={e => setUsername(e.target.value)}
+        type="text"
+        placeholder="Nombre de usuario"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        autoComplete="username"
       />
 
       <input
         type="password"
-        placeholder="Password"
-        onChange={e => setPassword(e.target.value)}
+        placeholder="Contraseña (mínimo 6 caracteres)"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        autoComplete="new-password"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !loading) {
+            register();
+          }
+        }}
       />
 
-      <button onClick={register}>Registrarse</button>
+      <button onClick={register} disabled={loading}>
+        {loading ? "Creando cuenta..." : "Registrarse"}
+      </button>
     </div>
   );
 }

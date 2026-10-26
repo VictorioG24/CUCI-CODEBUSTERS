@@ -1,12 +1,56 @@
-export default function Navbar({ setPage }) {
+
+export default function Navbar({ setPage, user, setUser }) {
+  const cerrarSesion = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    localStorage.removeItem("role");
+
+    setUser(null);
+    setPage("home");
+  };
+
   return (
     <nav>
-      <h2 onClick={() => setPage("home")}>CUCI FORO</h2>
-      
+      <h2
+        onClick={() => setPage("home")}
+        style={{ cursor: "pointer" }}
+      >
+        CUCI FORO
+      </h2>
 
-      <button onClick={() => setPage("foro")}>Foro</button>
-      <button onClick={() => setPage("register")}>Registro</button>
-      <button onClick={() => setPage("login")}>Login</button>
+      <button onClick={() => setPage("home")}>
+        Inicio
+      </button>
+
+      <button onClick={() => setPage("foro")}>
+        Foro
+      </button>
+
+      {user ? (
+        <>
+          <span>
+            Hola, {user.username}
+          </span>
+
+          <button onClick={() => setPage("create")}>
+            Crear publicación
+          </button>
+
+          <button onClick={cerrarSesion}>
+            Cerrar sesión
+          </button>
+        </>
+      ) : (
+        <>
+          <button onClick={() => setPage("register")}>
+            Registro
+          </button>
+
+          <button onClick={() => setPage("login")}>
+            Iniciar sesión
+          </button>
+        </>
+      )}
     </nav>
   );
 }
