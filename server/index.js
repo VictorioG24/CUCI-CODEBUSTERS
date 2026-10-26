@@ -45,7 +45,6 @@ const commentSchema = new mongoose.Schema({
   }
 });
 
-// MODELO DE POST
 
 const postSchema = new mongoose.Schema({
   title: {
@@ -91,7 +90,6 @@ const postSchema = new mongoose.Schema({
 
 const Post = mongoose.model("Post", postSchema);
 
-// MODELO USUARIO
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -113,7 +111,6 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-// VERIFICAR LOGIN
 
 function verificarToken(req, res, next) {
 
@@ -147,70 +144,64 @@ function verificarToken(req, res, next) {
   }
 }
 
-// OBTENER POSTS
 
-app.post("/posts", verificarToken, async (req, res) => {
+ // OBTENER POSTS (PÚBLICO)
+
+app.get("/posts", async (req, res) => {
   try {
     const posts = await Post.find().sort({ createdAt: -1 });
-
     res.json(posts);
-
   } catch (error) {
     console.log(error);
-
     res.status(500).json({
       error: "Error al obtener publicaciones"
     });
   }
 });
 
-// CREAR POST
+// CREAR POST (REQUIERE SESIÓN)
 
-app.post("/posts", verificarToken, async (req, res) => {  try {
+app.post("/posts", verificarToken, async (req, res) => {
+  try {
+    const { title, description, code, language } = req.body;
 
-    const {
-  title,
-  description,
-  code,
-  language
-} = req.body;
-
-    if (!title) {
+    if (!title || !title.trim()) {
       return res.status(400).json({
         error: "El título es obligatorio"
       });
     }
 
     const newPost = new Post({
-  title,
-  description,
-  code,
-  language,
-  user: req.user.username
-});
-    await newPost.save();
+      title,
+      description,
+      code,
+      language,
+      user: req.user.username
+    });
 
+    await newPost.save();
     res.status(201).json(newPost);
 
   } catch (error) {
-
     console.log(error);
-
     res.status(500).json({
       error: "Error al crear la publicación"
     });
   }
 });
 
-// AGREGAR COMENTARIO
 
-app.post("/posts/:id/comments", verificarToken, async (req, res) => {  try {
+ // AGREGAR COMENTARIO (REQUIERE SESIÓN)
 
-   const {
-  content,
-  code,
-  language
-} = req.body;
+app.post("/posts/:id/comments", verificarToken, async (req, res) => {
+  try {
+    const { content, code, language } = req.body;
+
+    if (!content?.trim() && !code?.trim()) {
+      return res.status(400).json({
+        error: "Escribe un comentario o agrega código"
+      });
+    }
 
     const post = await Post.findById(req.params.id);
 
@@ -220,26 +211,32 @@ app.post("/posts/:id/comments", verificarToken, async (req, res) => {  try {
       });
     }
 
-   post.comments.push({
-  content: content || "",
-  code: code || "",
-  language: language || "javascript",
-  user: req.user.username
-});
+    post.comments.push({
+      content: content || "",
+      code: code || "",
+      language: language || "javascript",
+      user: req.user.username
+    });
 
     await post.save();
 
     res.status(201).json(post);
 
   } catch (error) {
-
     console.log(error);
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        error: "El ID de la publicación no es válido"
+      });
+    }
 
     res.status(500).json({
       error: "Error al agregar comentario"
     });
   }
 });
+
 
 // REGISTER
 
