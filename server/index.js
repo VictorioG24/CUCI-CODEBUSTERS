@@ -292,12 +292,20 @@ app.patch("/posts/:id", verificarToken, async (req, res) => {
     }
 
     // No permitir reclamar publicaciones
-    if (!post.user || post.user === "Anónimo" ||
-        post.user !== req.user.username) {
-      return res.status(403).json({
-        error: "Solo puedes editar tus propias publicaciones"
-      });
-    }
+    // El propietario, moderadores y administradores pueden editar.
+const esPropietario =
+  post.user &&
+  post.user !== "Anónimo" &&
+  post.user === req.user.username;
+
+const esModerador =
+  ["moderador", "admin"].includes(req.user.role);
+
+if (!esPropietario && !esModerador) {
+  return res.status(403).json({
+    error: "No tienes permiso para editar esta publicación"
+  });
+}
 
     const { title, description, code, language } = req.body;
 
