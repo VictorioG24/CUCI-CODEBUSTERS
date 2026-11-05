@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 
 export default function PostCard({ post }) {
@@ -8,8 +7,55 @@ export default function PostCard({ post }) {
   const [language, setLanguage] = useState("javascript");
   const [comments, setComments] = useState(post.comments || []);
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const token = localStorage.getItem("token");
+  const username = localStorage.getItem("username");
+  const role = localStorage.getItem("role");
+
+  const canDelete =
+    role === "admin" ||
+    role === "moderador" ||
+    (username && username === post.user);
+
+  const deletePost = async () => {
+    if (!canDelete || deleting) return;
+
+    const confirmed = window.confirm(
+      `¿Seguro que quieres eliminar la publicación "${post.title}"?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeleting(true);
+
+      const res = await fetch(
+        `https://codebusters-api.onrender.com/posts/${post._id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        alert(data.error || "No se pudo eliminar la publicación.");
+        return;
+      }
+
+      alert("Publicación eliminada. Se actualizará la lista.");
+      window.location.reload();
+    } catch (error) {
+      console.error("Error al eliminar publicación:", error);
+      alert("Error de conexión al intentar eliminar.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const sendComment = async () => {
     if (!token) {
@@ -103,6 +149,16 @@ export default function PostCard({ post }) {
         <button onClick={() => setShowComments(!showComments)}>
           {comments.length} respuestas
         </button>
+
+        {canDelete && (
+          <button
+            className="btn-delete"
+            onClick={deletePost}
+            disabled={deleting}
+          >
+            {deleting ? "Eliminando..." : "Eliminar publicación"}
+          </button>
+        )}
       </div>
 
       {showComments && (
@@ -115,7 +171,7 @@ export default function PostCard({ post }) {
               key={comment._id || index}
             >
               <strong>
-                👤 {comment.user || "Anónimo"}
+                {comment.user || "Anónimo"}
               </strong>
 
               {comment.content && <p>{comment.content}</p>}
