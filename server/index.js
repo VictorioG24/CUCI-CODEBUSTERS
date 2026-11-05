@@ -499,6 +499,57 @@ app.patch("/users/:id/role", verificarToken, requireRole("admin"), async (req, r
     });
   }
 });
+/* ELIMINAR USUARIO: solo administradores */
+app.delete("/users/:id", verificarToken, requireRole("admin"), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        error: "Usuario no encontrado"
+      });
+    }
+
+    // Evitar que el administrador elimine su propia cuenta.
+    if (user._id.toString() === req.user.id) {
+      return res.status(400).json({
+        error: "No puedes eliminar tu propia cuenta"
+      });
+    }
+
+    // Evitar eliminar al último administrador.
+    if (user.role === "admin") {
+      const totalAdmins = await User.countDocuments({
+        role: "admin"
+      });
+
+      if (totalAdmins <= 1) {
+        return res.status(400).json({
+          error: "No puedes eliminar al último administrador"
+        });
+      }
+    }
+
+    await user.deleteOne();
+
+    return res.json({
+      message: `El usuario ${user.username} fue eliminado correctamente`
+    });
+
+  } catch (error) {
+    console.error("Error al eliminar usuario:", error);
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        error: "El ID del usuario no es válido"
+      });
+    }
+
+    return res.status(500).json({
+      error: "Error al eliminar usuario"
+    });
+  }
+});
 
 // LOGIN
 

@@ -11,6 +11,9 @@ export default function Admin() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [savingId, setSavingId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
+
+  const usernameActual = localStorage.getItem("username");
 
   const cargarUsuarios = async () => {
     setLoading(true);
@@ -80,8 +83,47 @@ export default function Admin() {
     }
   };
 
+  const eliminarUsuario = async (user) => {
+    const confirmar = window.confirm(
+      `¿Seguro que deseas eliminar la cuenta de ${user.username}? Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmar) return;
+
+    setError("");
+    setMessage("");
+    setDeletingId(user._id);
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(`${API}/users/${user._id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "No se pudo eliminar el usuario");
+      }
+
+      setUsers((actuales) =>
+        actuales.filter((actual) => actual._id !== user._id)
+      );
+
+      setMessage(data.message || "Usuario eliminado correctamente.");
+    } catch (err) {
+      setError(err.message || "Error al eliminar usuario");
+    } finally {
+      setDeletingId("");
+    }
+  };
+
   return (
-    <main style={{ maxWidth: 900, margin: "30px auto", padding: 20 }}>
+    <main style={{ maxWidth: 1000, margin: "30px auto", padding: 20 }}>
       <h1>Administración de usuarios</h1>
       <p>Consulta las cuentas registradas y administra sus permisos.</p>
 
@@ -115,44 +157,84 @@ export default function Admin() {
                 <th style={{ padding: 12, borderBottom: "1px solid #ccc" }}>
                   Usuario
                 </th>
+
                 <th style={{ padding: 12, borderBottom: "1px solid #ccc" }}>
                   Rol actual
                 </th>
+
                 <th style={{ padding: 12, borderBottom: "1px solid #ccc" }}>
                   Cambiar rol
+                </th>
+
+                <th style={{ padding: 12, borderBottom: "1px solid #ccc" }}>
+                  Acciones
                 </th>
               </tr>
             </thead>
 
             <tbody>
-              {users.map((user) => (
-                <tr key={user._id}>
-                  <td style={{ padding: 12, borderBottom: "1px solid #ddd" }}>
-                    {user.username}
-                  </td>
+              {users.map((user) => {
+                const esMiCuenta = user.username === usernameActual;
 
-                  <td style={{ padding: 12, borderBottom: "1px solid #ddd" }}>
-                    {user.role}
-                  </td>
+                return (
+                  <tr key={user._id}>
+                    <td style={{ padding: 12, borderBottom: "1px solid #ddd" }}>
+                      {user.username}
+                      {esMiCuenta && " (Tú)"}
+                    </td>
 
-                  <td style={{ padding: 12, borderBottom: "1px solid #ddd" }}>
-                    <select
-                      value={user.role}
-                      disabled={savingId === user._id}
-                      onChange={(e) => cambiarRol(user._id, e.target.value)}
-                      aria-label={`Cambiar rol de ${user.username}`}
-                    >
-                      {ROLES.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                    </select>
+                    <td style={{ padding: 12, borderBottom: "1px solid #ddd" }}>
+                      {user.role}
+                    </td>
 
-                    {savingId === user._id && <span> Guardando...</span>}
-                  </td>
-                </tr>
-              ))}
+                    <td style={{ padding: 12, borderBottom: "1px solid #ddd" }}>
+                      <select
+                        value={user.role}
+                        disabled={savingId === user._id}
+                        onChange={(e) => cambiarRol(user._id, e.target.value)}
+                        aria-label={`Cambiar rol de ${user.username}`}
+                      >
+                        {ROLES.map((role) => (
+                          <option key={role} value={role}>
+                            {role}
+                          </option>
+                        ))}
+                      </select>
+
+                      {savingId === user._id && <span> Guardando...</span>}
+                    </td>
+
+                    <td style={{ padding: 12, borderBottom: "1px solid #ddd" }}>
+                      <button
+                        type="button"
+                        onClick={() => eliminarUsuario(user)}
+                        disabled={
+                          esMiCuenta ||
+                          deletingId === user._id ||
+                          savingId === user._id
+                        }
+                        title={
+                          esMiCuenta
+                            ? "No puedes eliminar tu propia cuenta"
+                            : "Eliminar usuario"
+                        }
+                        style={{
+                          padding: "7px 12px",
+                          border: "none",
+                          borderRadius: 5,
+                          background: esMiCuenta ? "#999" : "#c62828",
+                          color: "#fff",
+                          cursor: esMiCuenta ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {deletingId === user._id
+                          ? "Eliminando..."
+                          : "Eliminar"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
