@@ -280,6 +280,64 @@ app.post("/posts/:id/comments", verificarToken, async (req, res) => {
 });
 
 
+/* ELIMINAR COMENTARIO */
+app.delete("/posts/:id/comments/:commentId", verificarToken, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({
+        error: "Publicación no encontrada"
+      });
+    }
+
+    const comment = post.comments.id(req.params.commentId);
+
+    if (!comment) {
+      return res.status(404).json({
+        error: "Comentario no encontrado"
+      });
+    }
+
+    const esPropietario =
+      comment.user &&
+      comment.user !== "Anónimo" &&
+      comment.user === req.user.username;
+
+    const esModerador =
+      ["moderador", "admin"].includes(req.user.role);
+
+    if (!esPropietario && !esModerador) {
+      return res.status(403).json({
+        error: "No tienes permiso para eliminar este comentario"
+      });
+    }
+
+    comment.deleteOne();
+    await post.save();
+
+    return res.json({
+      message: "Comentario eliminado correctamente",
+      comments: post.comments
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        error: "El ID proporcionado no es válido"
+      });
+    }
+
+    return res.status(500).json({
+      error: "Error al eliminar comentario"
+    });
+  }
+});
+
+
+
 /* EDITAR PUBLICACIÓN prop*/
 app.patch("/posts/:id", verificarToken, async (req, res) => {
   try {

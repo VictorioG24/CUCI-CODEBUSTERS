@@ -34,6 +34,11 @@ export default function PostCard({ post }) {
     role === "moderador" ||
     (username && username === post.user && post.user !== "Anónimo");
 
+    const canDeleteComment = (comment) =>
+  role === "admin" ||
+  role === "moderador" ||
+  (username && username === comment.user && comment.user !== "Anónimo");
+
   // Guardar cambios de la publicación
   const saveEdit = async () => {
     if (!editTitle.trim()) {
@@ -121,6 +126,44 @@ export default function PostCard({ post }) {
       setDeleting(false);
     }
   };
+
+  const deleteComment = async (commentId) => {
+  if (!token || deletingComment) return;
+
+  const confirmed = window.confirm(
+    "¿Seguro que quieres eliminar este comentario?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    setDeletingComment(commentId);
+
+    const res = await fetch(
+      `${API}/posts/${post._id}/comments/${commentId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      alert(data.error || "No se pudo eliminar el comentario.");
+      return;
+    }
+
+    setComments(data.comments || []);
+  } catch (error) {
+    console.error("Error al eliminar comentario:", error);
+    alert("Error de conexión al eliminar el comentario.");
+  } finally {
+    setDeletingComment(null);
+  }
+};
 
   const sendComment = async () => {
     if (!token) {
